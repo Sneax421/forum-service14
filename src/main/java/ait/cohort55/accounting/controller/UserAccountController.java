@@ -26,7 +26,6 @@ public class UserAccountController {
     // Not
     @PostMapping("login")
     public UserDto login(Principal principal) {
-        // FIXME
         return userAccountingService.getUser(principal.getName());
     }
 
@@ -55,7 +54,6 @@ public class UserAccountController {
     @PatchMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changePassword( Principal principal, @RequestHeader("X-Password") String newPassword) {
-        // FIXME
         userAccountingService.changePassword(principal.getName(), newPassword);
     }
 

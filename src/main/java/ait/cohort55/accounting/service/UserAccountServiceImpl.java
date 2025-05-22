@@ -11,18 +11,20 @@ import ait.cohort55.accounting.dto.exception.UserNotFoundException;
 import ait.cohort55.accounting.model.Role;
 import ait.cohort55.accounting.model.UserAccount;
 import lombok.RequiredArgsConstructor;
-import org.mindrot.jbcrypt.BCrypt;
 import org.modelmapper.ModelMapper;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
 import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
-public class UserAccountServiceImpl implements UserAccountingService {
+public class UserAccountServiceImpl implements UserAccountingService, CommandLineRunner {
 
     private final UserAccountRepository userAccountRepository;
     private final ModelMapper modelMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserDto register(UserRegisterDto userRegisterDto) {
@@ -30,7 +32,7 @@ public class UserAccountServiceImpl implements UserAccountingService {
             throw new UserExistsException();
         }
         UserAccount userAccount = modelMapper.map(userRegisterDto, UserAccount.class);
-        String password = BCrypt.hashpw(userRegisterDto.getPassword(), BCrypt.gensalt());
+        String password = passwordEncoder.encode(userRegisterDto.getPassword());
         userAccount.setPassword(password);
         userAccountRepository.save(userAccount);
         return modelMapper.map(userAccount, UserDto.class);
@@ -85,8 +87,18 @@ public class UserAccountServiceImpl implements UserAccountingService {
     @Override
     public void changePassword(String login, String newPassword) {
         UserAccount userAccount = userAccountRepository.findById(login).orElseThrow(UserNotFoundException::new);
-        String password = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        String password = passwordEncoder.encode(newPassword);
         userAccount.setPassword(password);
         userAccountRepository.save(userAccount);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        if(!userAccountRepository.existsById("admin")) {
+            UserAccount userAccount = new UserAccount("admin", passwordEncoder.encode("admin"), "", "");
+            userAccount.addRole(Role.MODERATOR.name());
+            userAccount.addRole(Role.ADMINISTRATOR.name());
+            userAccountRepository.save(userAccount);
+        }
     }
 }
