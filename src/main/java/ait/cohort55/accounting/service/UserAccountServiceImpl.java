@@ -5,6 +5,7 @@ import ait.cohort55.accounting.dto.RolesDto;
 import ait.cohort55.accounting.dto.UserDto;
 import ait.cohort55.accounting.dto.UserEditDto;
 import ait.cohort55.accounting.dto.UserRegisterDto;
+import ait.cohort55.accounting.dto.exception.InvalidDataException;
 import ait.cohort55.accounting.dto.exception.UserExistsException;
 import ait.cohort55.accounting.dto.exception.UserNotFoundException;
 import ait.cohort55.accounting.model.Role;
@@ -44,38 +45,48 @@ public class UserAccountServiceImpl implements UserAccountingService {
     @Override
     public UserDto removeUser(String login) {
         UserAccount userAccount = userAccountRepository.findById(login).orElseThrow(UserNotFoundException::new);
+        userAccountRepository.delete(userAccount);
         return modelMapper.map(userAccount, UserDto.class);
     }
 
     @Override
     public UserDto updateUser(String login, UserEditDto userEditDto) {
         UserAccount userAccount = userAccountRepository.findById(login).orElseThrow(UserNotFoundException::new);
-        String firstName = userEditDto.getFirstName();
-        if(firstName != null){
-            userAccount.setFirstName(firstName);
+        if (userEditDto.getFirstName() != null) {
+            userAccount.setFirstName(userEditDto.getFirstName());
         }
-        String lastName = userEditDto.getLastName();
-        if(lastName != null){
-            userAccount.setLastName(lastName);
+        if (userEditDto.getLastName() != null) {
+            userAccount.setLastName(userEditDto.getLastName());
         }
-        userAccount = userAccountRepository.save(userAccount);
+        userAccountRepository.save(userAccount);
         return modelMapper.map(userAccount, UserDto.class);
     }
 
     @Override
     public RolesDto changeRolesList(String login, String role, boolean isAddRole) {
         UserAccount userAccount = userAccountRepository.findById(login).orElseThrow(UserNotFoundException::new);
-        if(userAccount.getRoles() == null){
-            userAccount.addRole(role);
-        }else {
-            userAccount.removeRole(role);
+        boolean res;
+        role = role.toUpperCase();
+        try {
+            if (isAddRole) {
+                res = userAccount.addRole(role);
+            } else {
+                res = userAccount.removeRole(role);
+            }
+        }catch (Exception e){
+            throw new InvalidDataException("Bad role name: " + role);
+        }
+        if(res) {
+            userAccountRepository.save(userAccount);
         }
         return modelMapper.map(userAccount, RolesDto.class);
-
     }
 
     @Override
     public void changePassword(String login, String newPassword) {
-
+        UserAccount userAccount = userAccountRepository.findById(login).orElseThrow(UserNotFoundException::new);
+        String password = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        userAccount.setPassword(password);
+        userAccountRepository.save(userAccount);
     }
 }
